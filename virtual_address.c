@@ -46,9 +46,11 @@ int main(int argc, char *argv[]) {
     /* Assign first command line arg to x. */
     x = atol(argv[1]);
 
+    /* Calculate page number and offset. */
     page_number = get_page_number(x);
     offset = get_offset(x);
 
+    /* Print the results. */
     printf("The %lu-bit address %lu (%.fKB page size) contains:\n", \
         m, x, pow(2,n)/1024);
     printf("Page number: %lu\n", page_number);
