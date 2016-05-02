@@ -1,8 +1,8 @@
 ### Project 5
-Matt Levan
-Nolan Thompson
-Due May 13th, 2016
-CSC341 Operating Systems
+Matt Levan  
+Nolan Thompson  
+Due May 13th, 2016  
+CSC341 Operating Systems  
 Dr. Bin Tang
 
 ### Designing a Virtual Memory Manager
