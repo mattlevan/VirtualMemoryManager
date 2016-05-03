@@ -14,11 +14,22 @@
 #include <stdlib.h>
 #include <math.h>
 
+/* Global definitions. */
+#define PAGE_SIZE 256 // Page size, in bytes.
+#define PAGE_ENTRIES // Max page table entries.
+#define PAGE_NUM_BITS 8 // Page number size, in bits.
+#define FRAME_SIZE 256 // Frame size, in bytes.
+#define FRAME_ENTRIES 256 // Number of frames in physical memory.
+#define TLB_ENTRIES 16 // Max TLB entries.
+
 /* Global variables. */
-int page_size = 256; // 2^8 bytes.
-int n = 8; // 8-bit page number.
 int virtual; // Virtual address.
 int physical; // Physical address.
+int page_table[PAGE_ENTRIES]; // Page table, holds 2^8 = 256 entries.
+
+/* Statistics variables. */
+int fault_counter; // Count the page faults.
+int tlb_hit_rate; // TLB hit rate.
 
 /* Functions. */
 int get_physical(int virtual) {
@@ -39,6 +50,14 @@ int get_offset(int virtual) {
     return virtual & mask;
 }
 
+void initialize_page_table(int n) {
+    for (int i = 0; i < PAGE_ENTRIES; i++) {
+        page_table[i] = n;
+    }
+
+    return;
+}
+
 int main(int argc, char *argv[]) {
     /* File I/O variables. */
     char* in_file; // Address file name.
@@ -47,10 +66,13 @@ int main(int argc, char *argv[]) {
     FILE* in_ptr; // Address file pointer.
     FILE* out_ptr; // Output file pointer.
 
+    /* Initialize page_table, set all elements to -1. */
+    initialize_page_table(-1);
+
     /* Get command line arguments. */
     if (argc != 3) {
-        perror("Enter input and output file names!");
-        
+        printf("Enter input and output file names!");
+
         exit(1);
     }
     /* Else, proceed execution. */
@@ -62,7 +84,7 @@ int main(int argc, char *argv[]) {
         /* Open the address file. */
         if ((in_ptr = fopen(in_file, "r")) == NULL) {
             /* If fopen fails, print error and exit. */
-            perror("Input file could not be opened.\n");
+            printf("Input file could not be opened.\n");
 
             exit(1);
         }
@@ -70,7 +92,7 @@ int main(int argc, char *argv[]) {
         /* Open the output file. */
         if ((out_ptr = fopen(out_file, "a")) == NULL) {
             /* If fopen fails, print error and exit. */
-            perror("Output file could not be opened.\n");
+            printf("Output file could not be opened.\n");
 
             exit(1);
         }
