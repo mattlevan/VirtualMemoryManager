@@ -16,16 +16,18 @@
 
 /* Global definitions. */
 #define PAGE_SIZE 256 // Page size, in bytes.
-#define PAGE_ENTRIES // Max page table entries.
+#define PAGE_ENTRIES 256 // Max page table entries.
 #define PAGE_NUM_BITS 8 // Page number size, in bits.
 #define FRAME_SIZE 256 // Frame size, in bytes.
 #define FRAME_ENTRIES 256 // Number of frames in physical memory.
 #define TLB_ENTRIES 16 // Max TLB entries.
+#define MEM_SIZE (FRAME_SIZE * FRAME_ENTRIES) // Mem size, in bytes.
 
 /* Global variables. */
 int virtual; // Virtual address.
 int physical; // Physical address.
-int page_table[PAGE_ENTRIES]; // Page table, holds 2^8 = 256 entries.
+int page_table[PAGE_ENTRIES]; // Page table.
+char memory[MEM_SIZE]; // Physical memory. Each char is 1 byte.
 
 /* Statistics variables. */
 int fault_counter; // Count the page faults.
@@ -39,7 +41,7 @@ int get_physical(int virtual) {
 
 int get_page_number(int virtual) {
     /* Shift virtual to the right by n bits. */
-    return virtual >> n;
+    return virtual >> PAGE_NUM_BITS;
 }
 
 int get_offset(int virtual) {
@@ -54,8 +56,6 @@ void initialize_page_table(int n) {
     for (int i = 0; i < PAGE_ENTRIES; i++) {
         page_table[i] = n;
     }
-
-    return;
 }
 
 int main(int argc, char *argv[]) {
