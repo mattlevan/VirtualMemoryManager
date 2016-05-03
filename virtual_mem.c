@@ -34,9 +34,9 @@ int tlb[TLB_ENTRIES][2]; // Translation look-aside buffer.
 char memory[MEM_SIZE]; // Physical memory. Each char is 1 byte.
 
 /* Statistics variables. */
-int fault_counter; // Count the page faults.
+int fault_counter = 0; // Count the page faults.
 int tlb_hit_rate; // TLB hit rate.
-int tlb_counter; // TLB hit counter.
+int tlb_counter = 0; // TLB hit counter.
 
 /* Functions declarations. */
 int get_physical(int virtual);
@@ -123,6 +123,10 @@ int main(int argc, char *argv[]) {
                     physical = frame_number + offset;
                 }
                 else {
+                    /* Handle the page fault. */
+                    /* When a page fault occurs, you will read in a 256-byte
+                     * page from the file BACKING_STORE.bin and store it in 
+                     * an available page frame in the physical memory. */
                 }
             }
 
@@ -179,13 +183,17 @@ void initialize_tlb(int n) {
 }
 
 int consult_page_table(int page_number) {
+    if (page_table[page_number] == -1) {
+        fault_counter++;
+    }
+
     return page_table[page_number];
 }
 
 int consult_tlb(int page_number) {
     /* If page_number is found, return the corresponding frame number. */
     for (int i = 0; i < TLB_ENTRIES; i++) {
-        if (*(tlb[i]) == page_number) {
+        if (tlb[i][0] == page_number) {
             /* TLB hit! */
             tlb_counter++;
             return tlb[i][1];
