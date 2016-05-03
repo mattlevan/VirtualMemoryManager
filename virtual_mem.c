@@ -139,6 +139,8 @@ int main(int argc, char *argv[]) {
             fprintf(out_ptr, "Value: \n");
         }
 
+        /* Print the statistics to the end of the output file. */
+
         /* Close all three files. */
         fclose(in_ptr);
         fclose(out_ptr);
@@ -149,6 +151,7 @@ int main(int argc, char *argv[]) {
 }
 
 /* Functions. */
+/* Calculate and return the physical address. */
 int get_physical(int virtual) {
     /* Calculate the physical address value. */
     physical = get_page_number(virtual) + get_offset(virtual);
@@ -156,11 +159,13 @@ int get_physical(int virtual) {
     return physical;
 }
 
+/* Calculate and return the page number. */
 int get_page_number(int virtual) {
     /* Shift virtual to the right by n bits. */
     return (virtual >> PAGE_NUM_BITS);
 }
 
+/* Calculate and return the offset value. */
 int get_offset(int virtual) {
     /* Mask is decimal representation of 8 binary 1 digits.
      * It is actually 2^8-1. */
@@ -169,12 +174,14 @@ int get_offset(int virtual) {
     return virtual & mask;
 }
 
+/* Sets all page_table elements to integer n. */
 void initialize_page_table(int n) {
     for (int i = 0; i < PAGE_ENTRIES; i++) {
         page_table[i] = n;
     }
 }
 
+/* Sets all TLB elements to integer n. */
 void initialize_tlb(int n) {
     for (int i = 0; i < TLB_ENTRIES; i++) {
         tlb[i][0] = -1;
@@ -182,6 +189,7 @@ void initialize_tlb(int n) {
     }
 }
 
+/* Takes a page_number and checks for a corresponding frame number. */
 int consult_page_table(int page_number) {
     if (page_table[page_number] == -1) {
         fault_counter++;
@@ -190,6 +198,7 @@ int consult_page_table(int page_number) {
     return page_table[page_number];
 }
 
+/* Takes a page_number and checks for a corresponding frame number. */
 int consult_tlb(int page_number) {
     /* If page_number is found, return the corresponding frame number. */
     for (int i = 0; i < TLB_ENTRIES; i++) {
