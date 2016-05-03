@@ -8,7 +8,7 @@ Dr. Bin Tang
 ### Designing a Virtual Memory Manager
 This project consists of writing a program that translates logical to
 physical addresses for a virtual address space of size 2^16 = 
-65,536 bytes. Your program will read fro ma file containing logical 
+65,536 bytes. Your program will read from a file containing logical 
 addresses and, using a TLB as well as a page table, will translate each
 logical address to its corresponding physical address and output the value
 of the byte stored at the translated physical address. 
@@ -53,9 +53,9 @@ from the file BACKING_STORE and store it in an available page frame in
 physical memory. For example, if a logical address with page number 15 
 resulted in a page fault, your program would read in page 15 from 
 BACKING_STORE (remember that pages begin at 0 and are 256 bytes in size) and
-store it in a page frame in physical memory. Once htis frame is stored (and 
+store it in a page frame in physical memory. Once this frame is stored (and 
 the page table and TLB are updated), subsequent accesses to page 15 will be 
-resolved by eeither the TLB or the page table.
+resolved by either the TLB or the page table.
 
 You will need to treat BACKING_STORE.bin as a random-access file so that 
 you can randomly seek to certain positions of the file for reading. We 
@@ -100,7 +100,7 @@ You may use either a FIFO or an LRU policy for updating your TLB.
 #### How to Run The Program
 Your program should run as follows:
 
-`./vmm.o addresses.txt`
+`./virtual_mem.o addresses.txt`
 
 Your program will read in the file`addresses.txt`, which contains 1,000 
 logical addresses ranging from 0 to 65535. Your program is to translate
