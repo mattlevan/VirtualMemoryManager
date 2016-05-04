@@ -35,8 +35,9 @@ char memory[MEM_SIZE]; // Physical memory. Each char is 1 byte.
 
 /* Statistics variables. */
 int fault_counter = 0; // Count the page faults.
-int tlb_hit_rate; // TLB hit rate.
 int tlb_counter = 0; // TLB hit counter.
+float fault_rate = 0; // Fault rate.
+float tlb_rate; // TLB hit rate.
 
 /* Functions declarations. */
 int get_physical(int virtual);
@@ -123,15 +124,27 @@ int main(int argc, char *argv[]) {
                     physical = frame_number + offset;
                 }
                 else {
+                    physical = page_number + offset; 
                     /* Handle the page fault. */
                     /* When a page fault occurs, you will read in a 256-byte
                      * page from the file BACKING_STORE.bin and store it in 
                      * an available page frame in the physical memory. */
+                    
+                    /* Seek to the physical address in store_ptr file. */
+                    fseek(store_ptr, SEEK_SET, physical);
+                    /* Find a free frame (integer index) in memory. */
+                    free_frame = get_frame();
+                    /* Check if a free frame exists. */ 
+                    if (free_frame != -1) {
+                        /* Success, a free frame exists. */
+                        /* Store the byte from store file into it. */
+                        fread(memory[free_frame], 1, 1, store_ptr);
+                    else {
+                        /* Failed, no free frame in memory exists. */
+                        /* Swap! */
+                    }
                 }
             }
-
-            /* Use the physical address to read value from memory. */
-            /* If no value exists in the address in memory, page fault. */
 
             /* Append the results to out_file. */
             fprintf(out_ptr, "Virtual address: %d ", virtual); 
@@ -140,6 +153,11 @@ int main(int argc, char *argv[]) {
         }
 
         /* Print the statistics to the end of the output file. */
+        fprintf(out_ptr, "Number of Translated Addresses = %d\n", address_counter); 
+        fprintf(out_ptr, "Page Faults = %d\n", fault_counter);
+        fprintf(out_ptr, "Page Fault Rate = %.4f\n", fault_rate);
+        fprintf(out_ptr, "TLB Hits = %d\b", tlb_counter);
+        fprintf(out_ptr, "TLB Hit Rate = %.4f\n", tlb_rate);
 
         /* Close all three files. */
         fclose(in_ptr);
