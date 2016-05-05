@@ -98,9 +98,12 @@ so you will need to use a replacement strategy when you update a full TLB.
 You may use either a FIFO or an LRU policy for updating your TLB.
 
 #### How to Run The Program
-Your program should run as follows:
 
-`./virtual_mem.o addresses.txt`
+Compile with:  
+`gcc virtual_mem.c -o virtual_mem.o -std=c99 -lm`
+
+Run with:  
+`./virtual_mem.o addresses.txt output.txt BACKING_STORE.bin`
 
 Your program will read in the file`addresses.txt`, which contains 1,000 
 logical addresses ranging from 0 to 65535. Your program is to translate
