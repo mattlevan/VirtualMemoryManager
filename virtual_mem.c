@@ -29,13 +29,16 @@ int page_number; // Page number.
 int offset; // Offset.
 int physical; // Physical address.
 int frame_number; // Frame number.
+int value;
 int page_table[PAGE_ENTRIES]; // Page table.
 int tlb[TLB_ENTRIES][2]; // Translation look-aside buffer.
 char memory[MEM_SIZE]; // Physical memory. Each char is 1 byte.
+int mem_index = 0; // Points to beginning of first empty frame.
 
 /* Statistics variables. */
 int fault_counter = 0; // Count the page faults.
 int tlb_counter = 0; // TLB hit counter.
+int address_counter = 0; // Counts addresses read from file.
 float fault_rate = 0; // Fault rate.
 float tlb_rate; // TLB hit rate.
 
@@ -47,6 +50,8 @@ void initialize_page_table(int n);
 void initialize_tlb(int n);
 int consult_page_table(int page_number);
 int consult_tlb(int page_number);
+int get_frame();
+void load_page(FILE *file_ptr, int page_number, int free_frame);
 
 int main(int argc, char *argv[]) {
     /* File I/O variables. */
@@ -56,7 +61,7 @@ int main(int argc, char *argv[]) {
     char line[8]; // Temp string for holding each line in in_file.
     FILE* in_ptr; // Address file pointer.
     FILE* out_ptr; // Output file pointer.
-    FILE* store_ptr;
+    FILE* store_ptr; // Store file pointer.
 
     /* Initialize page_table, set all elements to -1. */
     initialize_page_table(-1);
@@ -103,16 +108,25 @@ int main(int argc, char *argv[]) {
         while (fgets(line, sizeof(line), in_ptr)) {
             /* Read a single address from file, assign to virtual. */
             virtual = atoi(line);
+            /* Increment address counter. */
+            address_counter++;
 
-            /* Get the page number from the virtual address. */
+            /* Get the page_number from the virtual address. */
             page_number = get_page_number(virtual);
+            /* Get the offset from the virtual address. */
             offset = get_offset(virtual);
+
+            /* Use page_number to find frame_number in TLB, if it exists. */
             frame_number = consult_tlb(page_number);
 
             /* Check frame_number returned by consult_tlb function. */ 
             if (frame_number != -1) {
                 /* TLB lookup succeeded. */
-                physical = frame_number + offset;
+                physical = (frame_number * FRAME_SIZE) + offset;
+
+                /* No store file access required... */
+                /* Fetch the value directly from memory. */
+                value = memory[physical];
             }
             else {
                 /* TLB lookup failed. */
@@ -121,24 +135,34 @@ int main(int argc, char *argv[]) {
 
                 /* Check frame number from consult_page_table. */
                 if (frame_number != -1) {
-                    physical = frame_number + offset;
+                    /* No page fault. */
+                    physical = (frame_number * FRAME_SIZE) + offset;
+
+                    /* No store file access required... */
+                    /* Fetch the value directly from memory. */
+                    value = memory[physical];
                 }
                 else {
-                    physical = page_number + offset; 
-                    /* Handle the page fault. */
+                    /* Page fault! */
                     /* When a page fault occurs, you will read in a 256-byte
                      * page from the file BACKING_STORE.bin and store it in 
                      * an available page frame in the physical memory. */
                     
-                    /* Seek to the physical address in store_ptr file. */
-                    fseek(store_ptr, SEEK_SET, physical);
+                    /* Seek to the start of the page in store_ptr file. */
+                    int page_address = page_number * PAGE_SIZE;
+                    fseek(store_ptr, page_address, SEEK_SET);
+
                     /* Find a free frame (integer index) in memory. */
-                    free_frame = get_frame();
+                    int free_frame = mem_index;
                     /* Check if a free frame exists. */ 
                     if (free_frame != -1) {
                         /* Success, a free frame exists. */
-                        /* Store the byte from store file into it. */
-                        fread(memory[free_frame], 1, 1, store_ptr);
+                        /* Store the frame from store file into memory. */
+                        load_page(store_ptr, page_number, free_frame);
+
+                        /* Increment mem_index. */
+                        increment_mem_index();
+                    }
                     else {
                         /* Failed, no free frame in memory exists. */
                         /* Swap! */
@@ -149,7 +173,7 @@ int main(int argc, char *argv[]) {
             /* Append the results to out_file. */
             fprintf(out_ptr, "Virtual address: %d ", virtual); 
             fprintf(out_ptr, "Physical address: %d ", physical);
-            fprintf(out_ptr, "Value: \n");
+            fprintf(out_ptr, "Value: \n", value);
         }
 
         /* Print the statistics to the end of the output file. */
@@ -230,4 +254,12 @@ int consult_tlb(int page_number) {
     /* If page_number doesn't exist in TLB, return -1. */
     /* TLB miss! */
     return -1;
+}
+
+/* Loads one page from file into main memory array. */
+void load_page(FILE *file_ptr, int page_number, int free_frame) {
+    /* Read one byte at a time into the memory array. */
+    for (int i = free_frame; i < PAGE_SIZE + free_frame; i++) {
+        fread(memory[i], 1, 1, file_ptr);
+    }
 }
