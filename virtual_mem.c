@@ -12,7 +12,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 /* Global definitions. */
 #define PAGE_SIZE 256 // Page size, in bytes.
@@ -51,17 +58,17 @@ void initialize_tlb(int n);
 int consult_page_table(int page_number);
 int consult_tlb(int page_number);
 int get_frame();
-void load_page(FILE *file_ptr, int page_number, int free_frame);
 
 int main(int argc, char *argv[]) {
     /* File I/O variables. */
     char* in_file; // Address file name.
     char* out_file; // Output file name.
     char* store_file; // Store file name.
+    char* store_data; // Store file data.
+    int store_fd; // Store file descriptor.
     char line[8]; // Temp string for holding each line in in_file.
     FILE* in_ptr; // Address file pointer.
     FILE* out_ptr; // Output file pointer.
-    FILE* store_ptr; // Store file pointer.
 
     /* Initialize page_table, set all elements to -1. */
     initialize_page_table(-1);
@@ -71,7 +78,7 @@ int main(int argc, char *argv[]) {
     if (argc != 4) {
         printf("Enter input, output, and store file names!");
 
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     /* Else, proceed execution. */
     else {
@@ -85,7 +92,7 @@ int main(int argc, char *argv[]) {
             /* If fopen fails, print error and exit. */
             printf("Input file could not be opened.\n");
 
-            exit(1);
+            exit(EXIT_FAILURE);
         }
 
         /* Open the output file. */
@@ -93,15 +100,19 @@ int main(int argc, char *argv[]) {
             /* If fopen fails, print error and exit. */
             printf("Output file could not be opened.\n");
 
-            exit(1);
+            exit(EXIT_FAILURE);
         }
 
         /* Open the store file. */
-        if ((store_ptr = fopen(in_file, "r")) == NULL) {
-            /* If fopen fails, print error and exit. */
-            printf("Store file could not be opened.\n");
-
-            exit(1);
+        /* Map the store file to memory. */
+        /* Initialize the file descriptor. */
+        store_fd = open(store_file, O_RDONLY);
+        store_data = mmap((caddr_t)0, MEM_SIZE, PROT_READ, MAP_SHARED, store_fd, 0);
+        /* Check that the mmap call succeeded. */
+        if (store_data == MAP_FAILED) {
+            close(store_fd);
+            printf("Error mmapping the backing store file!");
+            exit(EXIT_FAILURE);
         }
 
         /* Loop through the input file one line at a time. */
@@ -122,7 +133,7 @@ int main(int argc, char *argv[]) {
             /* Check frame_number returned by consult_tlb function. */ 
             if (frame_number != -1) {
                 /* TLB lookup succeeded. */
-                physical = (frame_number * FRAME_SIZE) + offset;
+                physical = frame_number + offset;
 
                 /* No store file access required... */
                 /* Fetch the value directly from memory. */
@@ -136,7 +147,8 @@ int main(int argc, char *argv[]) {
                 /* Check frame number from consult_page_table. */
                 if (frame_number != -1) {
                     /* No page fault. */
-                    physical = (frame_number * FRAME_SIZE) + offset;
+                    physical = frame_number + offset;
+                    printf("Physical: %d\n", physical);
 
                     /* No store file access required... */
                     /* Fetch the value directly from memory. */
@@ -150,18 +162,28 @@ int main(int argc, char *argv[]) {
                     
                     /* Seek to the start of the page in store_ptr file. */
                     int page_address = page_number * PAGE_SIZE;
-                    fseek(store_ptr, page_address, SEEK_SET);
 
-                    /* Find a free frame (integer index) in memory. */
-                    int free_frame = mem_index;
                     /* Check if a free frame exists. */ 
-                    if (free_frame != -1) {
+                    if (mem_index != -1) {
                         /* Success, a free frame exists. */
-                        /* Store the frame from store file into memory. */
-                        load_page(store_ptr, page_number, free_frame);
+                        /* Store the page from store file into memory frame. */
+                        memcpy(memory + mem_index, store_data + page_address, PAGE_SIZE);
+
+                        /* Calculate physical address of specific byte. */
+                        physical = mem_index + offset;
+                        /* Fetch value. */
+                        value = memory[physical];
+                        /* Update page_table with correct frame number. */
+                        page_table[page_number] = mem_index;
 
                         /* Increment mem_index. */
-                        increment_mem_index();
+                        if (mem_index < MEM_SIZE - FRAME_SIZE) {
+                            mem_index += FRAME_SIZE;
+                        }
+                        else {
+                            /* Set mem_index to -1, indicating memory is full. */ 
+                            mem_index = -1;
+                        }
                     }
                     else {
                         /* Failed, no free frame in memory exists. */
@@ -173,7 +195,7 @@ int main(int argc, char *argv[]) {
             /* Append the results to out_file. */
             fprintf(out_ptr, "Virtual address: %d ", virtual); 
             fprintf(out_ptr, "Physical address: %d ", physical);
-            fprintf(out_ptr, "Value: \n", value);
+            fprintf(out_ptr, "Value: %d\n", value);
         }
 
         /* Print the statistics to the end of the output file. */
@@ -186,7 +208,7 @@ int main(int argc, char *argv[]) {
         /* Close all three files. */
         fclose(in_ptr);
         fclose(out_ptr);
-        fclose(store_ptr);
+        close(store_fd);
     }
 
     return EXIT_SUCCESS;
@@ -254,12 +276,4 @@ int consult_tlb(int page_number) {
     /* If page_number doesn't exist in TLB, return -1. */
     /* TLB miss! */
     return -1;
-}
-
-/* Loads one page from file into main memory array. */
-void load_page(FILE *file_ptr, int page_number, int free_frame) {
-    /* Read one byte at a time into the memory array. */
-    for (int i = free_frame; i < PAGE_SIZE + free_frame; i++) {
-        fread(memory[i], 1, 1, file_ptr);
-    }
 }
