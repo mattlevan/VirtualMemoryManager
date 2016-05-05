@@ -2,6 +2,7 @@
  * CSC341 Operating Systems
  * Dr. Bin Tang
  * Matt Levan
+ * Nolan Thompson
  *
  * Virtual Memory Manager
  * 256 pages in virtual address space.
@@ -46,7 +47,7 @@ int mem_index = 0; // Points to beginning of first empty frame.
 int fault_counter = 0; // Count the page faults.
 int tlb_counter = 0; // TLB hit counter.
 int address_counter = 0; // Counts addresses read from file.
-float fault_rate = 0; // Fault rate.
+float fault_rate; // Fault rate.
 float tlb_rate; // TLB hit rate.
 
 /* Functions declarations. */
@@ -148,7 +149,6 @@ int main(int argc, char *argv[]) {
                 if (frame_number != -1) {
                     /* No page fault. */
                     physical = frame_number + offset;
-                    printf("Physical: %d\n", physical);
 
                     /* No store file access required... */
                     /* Fetch the value directly from memory. */
@@ -198,12 +198,15 @@ int main(int argc, char *argv[]) {
             fprintf(out_ptr, "Value: %d\n", value);
         }
 
+        /* Calculate fault rate. */
+        fault_rate = (float) fault_counter / (float) address_counter;
+
         /* Print the statistics to the end of the output file. */
         fprintf(out_ptr, "Number of Translated Addresses = %d\n", address_counter); 
         fprintf(out_ptr, "Page Faults = %d\n", fault_counter);
-        fprintf(out_ptr, "Page Fault Rate = %.4f\n", fault_rate);
-        fprintf(out_ptr, "TLB Hits = %d\b", tlb_counter);
-        fprintf(out_ptr, "TLB Hit Rate = %.4f\n", tlb_rate);
+        fprintf(out_ptr, "Page Fault Rate = %.3f\n", fault_rate);
+        fprintf(out_ptr, "TLB Hits = %d\n", tlb_counter);
+        fprintf(out_ptr, "TLB Hit Rate = %.3f\n", tlb_rate);
 
         /* Close all three files. */
         fclose(in_ptr);
