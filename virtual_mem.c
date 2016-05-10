@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
         /* Map the store file to memory. */
         /* Initialize the file descriptor. */
         store_fd = open(store_file, O_RDONLY);
-        store_data = mmap((caddr_t)0, MEM_SIZE, PROT_READ, MAP_SHARED, store_fd, 0);
+        store_data = mmap(0, MEM_SIZE, PROT_READ, MAP_SHARED, store_fd, 0);
         /* Check that the mmap call succeeded. */
         if (store_data == MAP_FAILED) {
             close(store_fd);
