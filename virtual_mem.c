@@ -40,6 +40,8 @@ int frame_number; // Frame number.
 int value;
 int page_table[PAGE_ENTRIES]; // Page table.
 int tlb[TLB_ENTRIES][2]; // Translation look-aside buffer.
+int tlb_front = -1; // TLB front index, queue data structure.
+int tlb_back = -1; // TLB back index, queue data structure.
 char memory[MEM_SIZE]; // Physical memory. Each char is 1 byte.
 int mem_index = 0; // Points to beginning of first empty frame.
 
@@ -58,6 +60,7 @@ void initialize_page_table(int n);
 void initialize_tlb(int n);
 int consult_page_table(int page_number);
 int consult_tlb(int page_number);
+void update_tlb(int page_number, int frame_number);
 int get_frame();
 
 int main(int argc, char *argv[]) {
@@ -134,6 +137,7 @@ int main(int argc, char *argv[]) {
             /* Check frame_number returned by consult_tlb function. */ 
             if (frame_number != -1) {
                 /* TLB lookup succeeded. */
+                /* No update to TLB required. */
                 physical = frame_number + offset;
 
                 /* No store file access required... */
@@ -149,6 +153,9 @@ int main(int argc, char *argv[]) {
                 if (frame_number != -1) {
                     /* No page fault. */
                     physical = frame_number + offset;
+
+                    /* Update TLB. */
+                    update_tlb(page_number, frame_number);
 
                     /* No store file access required... */
                     /* Fetch the value directly from memory. */
@@ -167,21 +174,26 @@ int main(int argc, char *argv[]) {
                     if (mem_index != -1) {
                         /* Success, a free frame exists. */
                         /* Store the page from store file into memory frame. */
-                        memcpy(memory + mem_index, store_data + page_address, PAGE_SIZE);
+                        memcpy(memory + mem_index, 
+                               store_data + page_address, PAGE_SIZE);
 
                         /* Calculate physical address of specific byte. */
-                        physical = mem_index + offset;
+                        frame_number = mem_index;
+                        physical = frame_number + offset;
                         /* Fetch value. */
                         value = memory[physical];
+
                         /* Update page_table with correct frame number. */
                         page_table[page_number] = mem_index;
+                        /* Update TLB. */
+                        update_tlb(page_number, frame_number);
 
                         /* Increment mem_index. */
                         if (mem_index < MEM_SIZE - FRAME_SIZE) {
                             mem_index += FRAME_SIZE;
                         }
                         else {
-                            /* Set mem_index to -1, indicating memory is full. */ 
+                            /* Set mem_index to -1, indicating memory full. */ 
                             mem_index = -1;
                         }
                     }
@@ -198,8 +210,9 @@ int main(int argc, char *argv[]) {
             fprintf(out_ptr, "Value: %d\n", value);
         }
 
-        /* Calculate fault rate. */
+        /* Calculate rates. */
         fault_rate = (float) fault_counter / (float) address_counter;
+        tlb_rate = (float) tlb_counter / (float) address_counter;
 
         /* Print the statistics to the end of the output file. */
         fprintf(out_ptr, "Number of Translated Addresses = %d\n", address_counter); 
@@ -272,6 +285,7 @@ int consult_tlb(int page_number) {
         if (tlb[i][0] == page_number) {
             /* TLB hit! */
             tlb_counter++;
+
             return tlb[i][1];
         }
     }
@@ -279,4 +293,28 @@ int consult_tlb(int page_number) {
     /* If page_number doesn't exist in TLB, return -1. */
     /* TLB miss! */
     return -1;
+}
+
+void update_tlb(int page_number, int frame_number) {
+    /* Use FIFO policy. */
+    if (tlb_front == -1) {
+        /* Set front and back indices. */
+        tlb_front = 0;
+        tlb_back = 0;
+
+        /* Update TLB. */
+        tlb[tlb_back][0] = page_number;
+        tlb[tlb_back][1] = frame_number;
+    }
+    else {
+        /* Use circular array to implement queue. */
+        tlb_front = (tlb_front + 1) % TLB_ENTRIES;
+        tlb_back = (tlb_back + 1) % TLB_ENTRIES;
+
+        /* Insert new TLB entry in the back. */
+        tlb[tlb_back][0] = page_number;
+        tlb[tlb_back][1] = frame_number;
+    }
+
+    return;
 }
